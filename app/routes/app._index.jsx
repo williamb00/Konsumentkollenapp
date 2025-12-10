@@ -5,13 +5,11 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  // Säkerställ att admin är inloggad innan sidan visas
   await authenticate.admin(request);
   return null;
 };
 
 export const action = async ({ request }) => {
-  // Här kommer du senare lägga riktig billing + DB-logik
   await authenticate.admin(request);
 
   const formData = await request.formData();
@@ -40,7 +38,6 @@ export default function Index() {
   const isSubmitting =
     fetcher.state === "submitting" || fetcher.state === "loading";
 
-  // Simple “fake state” tills du kopplar mot riktig data
   const currentStatus = fetcher.data?.status ?? "inactive";
   const isActive = currentStatus === "active";
 
