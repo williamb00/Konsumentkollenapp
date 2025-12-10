@@ -5,233 +5,207 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
+  // Säkerställ att admin är inloggad innan sidan visas
   await authenticate.admin(request);
-
   return null;
 };
 
 export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-  const product = responseJson.data.productCreate.product;
-  const variantId = product.variants.edges[0].node.id;
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyReactRouterTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-  const variantResponseJson = await variantResponse.json();
+  // Här kommer du senare lägga riktig billing + DB-logik
+  await authenticate.admin(request);
 
-  return {
-    product: responseJson.data.productCreate.product,
-    variant: variantResponseJson.data.productVariantsBulkUpdate.productVariants,
-  };
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  switch (intent) {
+    case "activate-subscription":
+      return {
+        status: "active",
+        message: "Konsumentkollen har aktiverats för din butik.",
+      };
+    case "deactivate-subscription":
+      return {
+        status: "inactive",
+        message: "Konsumentkollen har stängts av.",
+      };
+    default:
+      return { status: "idle" };
+  }
 };
 
 export default function Index() {
   const fetcher = useFetcher();
   const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
+
+  const isSubmitting =
+    fetcher.state === "submitting" || fetcher.state === "loading";
+
+  // Simple “fake state” tills du kopplar mot riktig data
+  const currentStatus = fetcher.data?.status ?? "inactive";
+  const isActive = currentStatus === "active";
 
   useEffect(() => {
-    if (fetcher.data?.product?.id) {
-      shopify.toast.show("Product created");
+    if (fetcher.data?.message) {
+      shopify.toast.show(fetcher.data.message);
     }
-  }, [fetcher.data?.product?.id, shopify]);
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+  }, [fetcher.data?.message, shopify]);
+
+  const activate = () => {
+    fetcher.submit(
+      { intent: "activate-subscription" },
+      { method: "POST" },
+    );
+  };
+
+  const deactivate = () => {
+    fetcher.submit(
+      { intent: "deactivate-subscription" },
+      { method: "POST" },
+    );
+  };
 
   return (
-    <s-page heading="Shopify app template">
-      <s-button slot="primary-action" onClick={generateProduct}>
-        Generate a product
+    <s-page heading="Konsumentkollen från ViPo Säkerhetstjänster">
+      <s-button
+        slot="primary-action"
+        onClick={isActive ? deactivate : activate}
+        {...(isSubmitting ? { loading: true } : {})}
+      >
+        {isActive ? "Stäng av Konsumentkollen" : "Aktivera Konsumentkollen"}
       </s-button>
 
-      <s-section heading="Congrats on creating a new Shopify app 🎉">
-        <s-paragraph>
-          This embedded app template uses{" "}
-          <s-link
-            href="https://shopify.dev/docs/apps/tools/app-bridge"
-            target="_blank"
-          >
-            App Bridge
-          </s-link>{" "}
-          interface examples like an{" "}
-          <s-link href="/app/additional">additional page in the app nav</s-link>
-          , as well as an{" "}
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql"
-            target="_blank"
-          >
-            Admin GraphQL
-          </s-link>{" "}
-          mutation demo, to provide a starting point for app development.
-        </s-paragraph>
-      </s-section>
-      <s-section heading="Get started with products">
-        <s-paragraph>
-          Generate a product with GraphQL and get the JSON output for that
-          product. Learn more about the{" "}
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
-            target="_blank"
-          >
-            productCreate
-          </s-link>{" "}
-          mutation in our API references.
-        </s-paragraph>
-        <s-stack direction="inline" gap="base">
-          <s-button
-            onClick={generateProduct}
-            {...(isLoading ? { loading: true } : {})}
-          >
-            Generate a product
-          </s-button>
-          {fetcher.data?.product && (
+      {/* Huvudkort: produktbeskrivning och CTA */}
+      <s-section>
+        <s-stack direction="block" gap="base">
+          <s-heading>Konsumentkollen för din webbutik</s-heading>
+
+          <s-paragraph>
+            Gör det enkelt för dina kunder att förstå sina rättigheter direkt
+            i köpupplevelsen. Konsumentkollen visar tydlig information om
+            ångerrätt, öppet köp och garanti i dina viktigaste flöden.
+          </s-paragraph>
+
+          <s-stack direction="inline" gap="base">
+            <s-heading>89 kr / månad</s-heading>
+            <s-badge tone="success">Ingen bindningstid</s-badge>
+          </s-stack>
+
+          <s-unordered-list>
+            <s-list-item>
+              Färre onödiga reklamationer och missförstånd efter köp.
+            </s-list-item>
+            <s-list-item>Mindre tryck på kundtjänst.</s-list-item>
+            <s-list-item>
+              Ökad trygghet för kunden – tydligt vad som gäller innan köp.
+            </s-list-item>
+          </s-unordered-list>
+
+          <s-stack direction="inline" gap="base">
             <s-button
-              onClick={() => {
-                shopify.intents.invoke?.("edit:shopify/Product", {
-                  value: fetcher.data?.product?.id,
-                });
-              }}
-              target="_blank"
-              variant="tertiary"
+              variant="primary"
+              onClick={isActive ? deactivate : activate}
+              {...(isSubmitting ? { loading: true } : {})}
             >
-              Edit product
+              {isActive ? "Stäng av för butiken" : "Aktivera för butiken"}
             </s-button>
-          )}
+
+            <s-paragraph>
+              <s-text>
+                Vill du läsa mer?{" "}
+                <s-link href="https://vipo.se" target="_blank">
+                  Besök vipo.se
+                </s-link>
+              </s-text>
+            </s-paragraph>
+          </s-stack>
         </s-stack>
-        {fetcher.data?.product && (
-          <s-section heading="productCreate mutation">
-            <s-stack direction="block" gap="base">
-              <s-box
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background="subdued"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(fetcher.data.product, null, 2)}</code>
-                </pre>
-              </s-box>
-
-              <s-heading>productVariantsBulkUpdate mutation</s-heading>
-              <s-box
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background="subdued"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(fetcher.data.variant, null, 2)}</code>
-                </pre>
-              </s-box>
-            </s-stack>
-          </s-section>
-        )}
       </s-section>
 
-      <s-section slot="aside" heading="App template specs">
+      {/* Kort: Var visas Konsumentkollen? */}
+      <s-section heading="Var visas Konsumentkollen?">
         <s-paragraph>
-          <s-text>Framework: </s-text>
-          <s-link href="https://reactrouter.com/" target="_blank">
-            React Router
-          </s-link>
+          När du aktiverar tjänsten kan Konsumentkollen visas på flera
+          nyckelplatser i butiken. I kommande versioner kan du slå av/på
+          respektive yta och finjustera texterna.
         </s-paragraph>
+
+        <s-stack direction="block" gap="base">
+          <s-box padding="base" borderWidth="base" borderRadius="base">
+            <s-heading>Kundvagn</s-heading>
+            <s-paragraph>
+              Kunden ser sina rättigheter precis innan de går vidare till
+              kassan.
+            </s-paragraph>
+          </s-box>
+
+          <s-box padding="base" borderWidth="base" borderRadius="base">
+            <s-heading>Produktsida</s-heading>
+            <s-paragraph>
+              Tydlig information per produkt – extra viktigt för dyrare eller
+              mer komplexa varor.
+            </s-paragraph>
+          </s-box>
+
+          <s-box padding="base" borderWidth="base" borderRadius="base">
+            <s-heading>Checkout</s-heading>
+            <s-paragraph>
+              Sammanfattning av de viktigaste rättigheterna precis innan
+              betalning.
+            </s-paragraph>
+          </s-box>
+        </s-stack>
+      </s-section>
+
+      {/* Kort: Testköp */}
+      <s-section heading="Testa upplevelsen">
         <s-paragraph>
-          <s-text>Interface: </s-text>
-          <s-link
-            href="https://shopify.dev/docs/api/app-home/using-polaris-components"
-            target="_blank"
-          >
-            Polaris web components
-          </s-link>
+          När Konsumentkollen är aktiv kan du göra ett testköp i butiken för
+          att se exakt hur dina kunder upplever informationen.
         </s-paragraph>
+
         <s-paragraph>
-          <s-text>API: </s-text>
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql"
-            target="_blank"
-          >
-            GraphQL
-          </s-link>
-        </s-paragraph>
-        <s-paragraph>
-          <s-text>Database: </s-text>
-          <s-link href="https://www.prisma.io/" target="_blank">
-            Prisma
+          <s-link href="/" target="_blank">
+            Öppna butiken i en ny flik
           </s-link>
         </s-paragraph>
       </s-section>
 
-      <s-section slot="aside" heading="Next steps">
+      {/* Högerspalt: statuskort */}
+      <s-section slot="aside" heading="Status för Konsumentkollen">
+        <s-stack direction="block" gap="base">
+          <s-badge tone={isActive ? "success" : "critical"}>
+            {isActive ? "Aktiv" : "Inte aktiv"}
+          </s-badge>
+
+          <s-paragraph>
+            När tjänsten är aktiv debiteras{" "}
+            <s-text emphasis>89 kr / månad</s-text> via din Shopify-faktura.
+            Ingen bindningstid.
+          </s-paragraph>
+
+          <s-box padding="base" borderWidth="base" borderRadius="base">
+            <s-heading>Nästa steg</s-heading>
+            <s-unordered-list>
+              <s-list-item>Aktivera tjänsten för din butik.</s-list-item>
+              <s-list-item>Gör ett testköp och se widgeten i kassan.</s-list-item>
+              <s-list-item>
+                Justera placeringar och texter när konfig‑sidan är på plats.
+              </s-list-item>
+            </s-unordered-list>
+          </s-box>
+        </s-stack>
+      </s-section>
+
+      {/* Högerspalt: supportkort */}
+      <s-section slot="aside" heading="Support & kontakt">
+        <s-paragraph>
+          Har du frågor om Konsumentkollen eller vill diskutera större volymer?
+          Hör av dig till ViPo så hjälper vi dig vidare.
+        </s-paragraph>
+
         <s-unordered-list>
-          <s-list-item>
-            Build an{" "}
-            <s-link
-              href="https://shopify.dev/docs/apps/getting-started/build-app-example"
-              target="_blank"
-            >
-              example app
-            </s-link>
-          </s-list-item>
-          <s-list-item>
-            Explore Shopify&apos;s API with{" "}
-            <s-link
-              href="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-              target="_blank"
-            >
-              GraphiQL
-            </s-link>
-          </s-list-item>
+          <s-list-item>E‑post: support@vipo.se</s-list-item>
+          <s-list-item>Telefon: 010‑000 00 00</s-list-item>
         </s-unordered-list>
       </s-section>
     </s-page>
