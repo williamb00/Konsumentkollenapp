@@ -1,0 +1,89 @@
+<div class="kk-card">
+  <div class="kk-header">
+    <img
+  src="{{ 'viposvg.png' | asset_url }}"
+  class="kk-icon"
+  alt="Konsumentkollen ikon"
+  width="32"
+  height="32"
+/>
+
+    <h3 class="kk-title">Konsumentkollen</h3>
+  </div>
+
+  <p class="kk-text">
+    Trygg rådgivning inför köp och tvister.<br>
+    Endast 89 kr/mån.
+  </p>
+
+  <a href="/apps/{{ shop.metafields.konsumentkollen.redirect_handle }}" class="kk-button">
+    Aktivera Konsumentkollen
+  </a>
+</div>
+
+<style>
+  .kk-card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-width: 380px;
+    border: 1px solid #eee;
+  }
+
+  .kk-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .kk-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .kk-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .kk-text {
+    margin-top: 10px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    color: #333;
+    line-height: 1.4;
+  }
+
+  .kk-button {
+    display: block;
+    text-align: center;
+    background: #2D64FF;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease;
+  }
+
+  .kk-button:hover {
+    background: #1d4dcc;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Konsumentkollen Widget",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "redirect_url",
+      "label": "Redirect URL till Scrive",
+      "default": "https://din-backend.com/start-scrive"
+    }
+  ]
+}
+{% endschema %}
