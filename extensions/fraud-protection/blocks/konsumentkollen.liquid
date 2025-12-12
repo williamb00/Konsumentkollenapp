@@ -1,76 +1,129 @@
-<div class="kk-card">
-  <div class="kk-header">
-    <img
-  src="{{ 'viposvg.png' | asset_url }}"
-  class="kk-icon"
-  alt="Konsumentkollen ikon"
-  width="32"
-  height="32"
-/>
+<div class="kk-bar-wrapper">
+  <div class="kk-bar">
+    
+    <!-- Ikon -->
+    <div class="kk-bar-icon">
+      <img
+        src="{{ 'viposvg.png' | asset_url }}"
+        alt="Konsumentkollen"
+        width="28"
+        height="28"
+      />
+    </div>
 
-    <h3 class="kk-title">Konsumentkollen</h3>
+    <!-- Text -->
+    <div class="kk-bar-content">
+      <strong>Skydda din identitet – få omedelbara larm!</strong>
+      <span>
+        Med Konsumentkollen får du bevakning av ditt personnummer dygnet runt. Vi larmar dig direkt när något förändras – som kreditupplysningar, adressändringar eller misstänkt ID-missbruk.
+      </span>
+    </div>
+
+    <!-- CTA -->
+    <div class="kk-bar-action">
+      <a
+        href="/apps/{{ shop.metafields.konsumentkollen.redirect_handle }}"
+        class="kk-bar-button"
+      >
+        Bevaka
+      </a>
+    </div>
+
   </div>
-
-  <p class="kk-text">
-    Trygg rådgivning inför köp och tvister.<br>
-    Endast 89 kr/mån.
-  </p>
-
-  <a href="/apps/{{ shop.metafields.konsumentkollen.redirect_handle }}" class="kk-button">
-    Aktivera Konsumentkollen
-  </a>
 </div>
 
 <style>
-  .kk-card {
+  /* === Fullbredds-wrapper === */
+  .kk-bar-wrapper {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 16px 0;
+    background: transparent;
+  }
+
+  /* === Själva baren === */
+  .kk-bar {
+    max-width: 1200px;
+    margin: 0 auto;
     background: #ffffff;
-    padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    max-width: 380px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
     border: 1px solid #eee;
   }
 
-  .kk-header {
+  /* === Ikon === */
+  .kk-bar-icon {
+    flex-shrink: 0;
+    background: #fff3ec;
+    border-radius: 10px;
+    padding: 10px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
   }
 
-  .kk-icon {
-    width: 32px;
-    height: 32px;
+  /* === Text === */
+  .kk-bar-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    color: #222;
   }
 
-  .kk-title {
-    font-size: 22px;
+  .kk-bar-content strong {
+    font-size: 16px;
     font-weight: 600;
-    margin: 0;
   }
 
-  .kk-text {
-    margin-top: 10px;
-    margin-bottom: 20px;
-    font-size: 15px;
-    color: #333;
+  .kk-bar-content span {
+    color: #555;
     line-height: 1.4;
   }
 
-  .kk-button {
-    display: block;
-    text-align: center;
-    background: #ff6610;
-    color: white;
-    padding: 12px;
+  /* === CTA === */
+  .kk-bar-action {
+    flex-shrink: 0;
+  }
+
+  .kk-bar-button {
+    background: #000000;
+    color: #ffffff;
+    padding: 10px 18px;
     border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
-    transition: background 0.2s ease;
+    transition: all 0.2s ease;
+    white-space: nowrap;
   }
 
-  .kk-button:hover {
-    background: #0c0044;
-    color: #ff6610;
+  .kk-bar-button:hover {
+    background: #474747ff;
+    color: #ffffff;
+  }
+
+  /* === Mobil === */
+  @media (max-width: 640px) {
+    .kk-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .kk-bar-action {
+      width: 100%;
+    }
+
+    .kk-bar-button {
+      width: 100%;
+      text-align: center;
+    }
   }
 </style>
 
