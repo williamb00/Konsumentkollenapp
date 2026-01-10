@@ -1,0 +1,21 @@
+{%- comment -%}
+  Konsumentkollen – App Embed Block
+  Denna fil är själva “embedben” som merchant togglar i Theme Editor.
+{%- endcomment -%}
+
+<div id="kk-embed-root" data-scrive-url="{{ settings.scrive_url }}"></div>
+
+{% schema %}
+{
+  "name": "Konsumentkollen",
+  "target": "body",
+  "javascript": "konsumentkollen-cart.js",
+  "settings": [
+    {
+      "type": "url",
+      "id": "scrive_url",
+      "label": "Scrive redirect URL"
+    }
+  ]
+}
+{% endschema %}
