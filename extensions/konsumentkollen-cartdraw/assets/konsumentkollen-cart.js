@@ -150,7 +150,7 @@ console.log("Konsumentkollen cart embed loaded");
       "</div>" +
       "</div>" +
       '<div class="kk-widget-actions">' +
-      '<button type="button" class="kk-widget-btn" id="kk-bevaka-btn">Bevaka</button>' +
+      '<button type="button" class="kk-widget-btn" id="kk-bevaka-btn">STARTA BEVAKNING</button>' +
       "</div>";
 
     var beforeTarget = findInsertBeforeTarget(drawer);

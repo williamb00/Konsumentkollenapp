@@ -1,0 +1,148 @@
+<div class="kk-bar-wrapper">
+  <div class="kk-bar">
+
+    <!-- Ikon -->
+    <div class="kk-bar-icon">
+      <img
+        src="{{ 'VIPO_LOGGA.svg' | asset_url }}"
+        alt="Konsumentkollen"
+        width="48"
+        height="48"
+        loading="lazy"
+      />
+    </div>
+
+    <!-- Text -->
+    <div class="kk-bar-content">
+      <strong>Skydda din identitet – få omedelbara larm!</strong>
+      <span>
+        Med Konsumentkollen får du bevakning av ditt personnummer dygnet runt.
+        Vi larmar dig direkt när något förändras!
+      </span>
+    </div>
+
+    <!-- CTA -->
+    <div class="kk-bar-action">
+      <a
+        href="{{ block.settings.redirect_url }}"
+        class="kk-bar-button"
+      >
+        STARTA BEVAKNING
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  /* === Fullbredds-wrapper === */
+  .kk-bar-wrapper {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 16px 0;
+    background: transparent;
+  }
+
+  /* === Själva baren === */
+  .kk-bar {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    border: 1px solid #eee;
+  }
+
+  /* === Ikon === */
+  .kk-bar-icon {
+    flex-shrink: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* === Text === */
+  .kk-bar-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    color: #222;
+  }
+
+  .kk-bar-content strong {
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .kk-bar-content span {
+    color: #555;
+    line-height: 1.4;
+  }
+
+  /* === CTA === */
+  .kk-bar-action {
+    flex-shrink: 0;
+  }
+
+  .kk-bar-button {
+    background: #ff6610;
+    color: #ffffff;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .kk-bar-button:hover {
+    background: #ffffff;
+    color: #ff6610;
+    border: 2px solid #ff6610;
+  }
+
+  /* === Mobil === */
+  @media (max-width: 640px) {
+    .kk-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .kk-bar-action {
+      width: 100%;
+    }
+
+    .kk-bar-button {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Konsumentkollen",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "redirect_url",
+      "label": "Redirect URL till Scrive",
+      "default": "https://scrive.com/form/190f283d-af8a-4b0e-b0f8-f3dbd761e342"
+    }
+  ]
+}
+{% endschema %}
+
+
