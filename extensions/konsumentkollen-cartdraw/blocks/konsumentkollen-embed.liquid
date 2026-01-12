@@ -1,9 +1,13 @@
 {%- comment -%}
-  Konsumentkollen – App Embed Block
-  Denna fil är själva “embedben” som merchant togglar i Theme Editor.
+  Konsumentkollen – App Embed Block (Cart Drawer)
+  Laddar JS via schema + skickar in asset-URL (logga) och Scrive-URL via data-attribut.
 {%- endcomment -%}
 
-<div id="kk-embed-root" data-scrive-url="{{ settings.scrive_url }}"></div>
+<div
+  id="kk-embed-root"
+  data-logo-url="{{ 'VIPO_LOGGA.svg' | asset_url }}"
+  data-scrive-url="{{ settings.scrive_url }}"
+></div>
 
 {% schema %}
 {
@@ -19,3 +23,4 @@
   ]
 }
 {% endschema %}
+
