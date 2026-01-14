@@ -1,12 +1,23 @@
-{%- comment -%}
-  Konsumentkollen – App Embed Block (Cart Drawer)
-  Laddar JS via schema + skickar in asset-URL (logga) och Scrive-URL via data-attribut.
-{%- endcomment -%}
+{% comment %}
+  Konsumentkollen – App Embed (Cart Drawer)
+
+  - Skickar in logo + Scrive-URL via data-attribut till konsumentkollen-cart.js
+  - Scrive-URL hämtas i första hand från shop-metafield:
+      shop.metafields.konsumentkollen.scrive_url
+    (detta är per butik/installation)
+  - Fallback: kan även anges i theme editor (settings.scrive_url)
+{% endcomment %}
+
+{% assign kk_scrive_url = shop.metafields.konsumentkollen.scrive_url.value %}
+{% if kk_scrive_url == blank %}
+  {% assign kk_scrive_url = settings.scrive_url %}
+{% endif %}
 
 <div
   id="kk-embed-root"
+  hidden
   data-logo-url="{{ 'VIPO_LOGGA.svg' | asset_url }}"
-  data-scrive-url="{{ settings.scrive_url }}"
+  data-scrive-url="{{ kk_scrive_url | escape }}"
 ></div>
 
 {% schema %}
@@ -18,9 +29,9 @@
     {
       "type": "url",
       "id": "scrive_url",
-      "label": "Scrive redirect URL"
+      "label": "Scrive redirect URL (fallback)",
+      "info": "Lämna tomt om du styr länken via appens admin-inställningar (metafield)."
     }
   ]
 }
 {% endschema %}
-

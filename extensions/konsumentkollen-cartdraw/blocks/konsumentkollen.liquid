@@ -1,14 +1,29 @@
-<div class="kk-bar-wrapper">
+{% liquid
+  assign scrive_url = shop.metafields.konsumentkollen.scrive_url.value
+  assign scrive_url = scrive_url | strip
+
+  if scrive_url == blank
+    assign scrive_url = block.settings.redirect_url | strip
+  endif
+
+  if scrive_url == blank
+    assign scrive_url = "https://scrive.com/form/190f283d-af8a-4b0e-b0f8-f3dbd761e342"
+  endif
+%}
+
+<div id="kk-bar-{{ block.id }}" class="kk-bar-wrapper">
   <div class="kk-bar">
 
     <!-- Ikon -->
     <div class="kk-bar-icon">
       <img
+        class="kk-bar-logo"
         src="{{ 'VIPO_LOGGA.svg' | asset_url }}"
         alt="Konsumentkollen"
         width="48"
         height="48"
         loading="lazy"
+        decoding="async"
       />
     </div>
 
@@ -16,7 +31,7 @@
     <div class="kk-bar-content">
       <strong>Skydda din identitet – få omedelbara larm!</strong>
       <span>
-        Med Konsumentkollen får du bevakning av ditt personnummer dygnet runt.
+        Med <strong>Konsumentkollen</strong> får du bevakning av ditt personnummer dygnet runt.
         Vi larmar dig direkt när något förändras!
       </span>
     </div>
@@ -24,8 +39,10 @@
     <!-- CTA -->
     <div class="kk-bar-action">
       <a
-        href="{{ block.settings.redirect_url }}"
+        href="{{ scrive_url | escape }}"
         class="kk-bar-button"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         STARTA BEVAKNING
       </a>
@@ -35,22 +52,25 @@
 </div>
 
 <style>
-  /* === Fullbredds-wrapper === */
-  .kk-bar-wrapper {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+  /* Scopar CSS till just detta block (så det inte krockar med tema) */
+  #kk-bar-{{ block.id }}.kk-bar-wrapper{
+    width: 100%;
+    box-sizing: border-box;
     padding: 16px 0;
+    display: flex;
+    justify-content: center;
     background: transparent;
   }
 
-  /* === Själva baren === */
-  .kk-bar {
+  #kk-bar-{{ block.id }} .kk-bar{
+    width: 100%;
     max-width: 1200px;
-    margin: 0 auto;
+    margin: 0 16px;
+    box-sizing: border-box;
+
     background: #ffffff;
     border-radius: 12px;
-    padding: 16px 16px;
+    padding: 16px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -58,72 +78,85 @@
     border: 1px solid #eee;
   }
 
-  /* === Ikon === */
-  .kk-bar-icon {
-    flex-shrink: 0;
+  #kk-bar-{{ block.id }} .kk-bar-icon{
+    flex: 0 0 auto;
     background: #ffffff;
     border-radius: 10px;
     padding: 10px;
+
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  /* === Text === */
-  .kk-bar-content {
+  /* Lås storleken så global tema-CSS (img{width:100%}) inte förstör */
+  #kk-bar-{{ block.id }} img.kk-bar-logo{
+    width: 48px !important;
+    height: 48px !important;
+    max-width: 48px !important;
+    max-height: 48px !important;
+    display: block;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  #kk-bar-{{ block.id }} .kk-bar-content{
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 4px;
     font-size: 14px;
     color: #222;
+    min-width: 0;
   }
 
-  .kk-bar-content strong {
+  #kk-bar-{{ block.id }} .kk-bar-content strong{
     font-size: 16px;
     font-weight: 800;
   }
 
-  .kk-bar-content span {
+  #kk-bar-{{ block.id }} .kk-bar-content span{
     color: #555;
     line-height: 1.4;
   }
 
-  /* === CTA === */
-  .kk-bar-action {
-    flex-shrink: 0;
+  #kk-bar-{{ block.id }} .kk-bar-action{
+    flex: 0 0 auto;
   }
 
-  .kk-bar-button {
+  #kk-bar-{{ block.id }} .kk-bar-button{
     background: #ff6610;
     color: #ffffff;
     padding: 14px 18px;
     border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
-    transition: all 0.2s ease;
     white-space: nowrap;
+
+    border: 2px solid transparent;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 
-  .kk-bar-button:hover {
+  #kk-bar-{{ block.id }} .kk-bar-button:hover{
     background: #ffffff;
     color: #ff6610;
-    border: 2px solid #ff6610;
+    border-color: #ff6610;
   }
 
-  /* === Mobil === */
-  @media (max-width: 640px) {
-    .kk-bar {
+  @media (max-width: 640px){
+    #kk-bar-{{ block.id }} .kk-bar{
       flex-direction: column;
       align-items: flex-start;
       gap: 12px;
+      margin: 0 12px;
     }
 
-    .kk-bar-action {
+    #kk-bar-{{ block.id }} .kk-bar-action{
       width: 100%;
     }
 
-    .kk-bar-button {
+    #kk-bar-{{ block.id }} .kk-bar-button{
+      display: block;
       width: 100%;
       text-align: center;
     }
@@ -138,11 +171,9 @@
     {
       "type": "text",
       "id": "redirect_url",
-      "label": "Redirect URL till Scrive",
+      "label": "Fallback URL (om ingen Scrive URL är sparad i appens settings)",
       "default": "https://scrive.com/form/190f283d-af8a-4b0e-b0f8-f3dbd761e342"
     }
   ]
 }
 {% endschema %}
-
-
