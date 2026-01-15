@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useFetcher, useLoaderData } from "react-router";
+import {
+  useFetcher,
+  useLoaderData,
+  useRouteError,
+  isRouteErrorResponse,
+} from "react-router";
 import { authenticate } from "../shopify.server";
 
 /**
@@ -26,34 +31,47 @@ async function getShopId(admin) {
     `#graphql
     query GetShopId {
       shop { id }
-    }`,
+    }`
   );
   const json = await res.json();
   return json?.data?.shop?.id;
 }
 
 export async function loader({ request }) {
+  // Viktigt: Detta hanterar embedded auth/iframe. Om inte auth finns -> redirect.
   const { admin } = await authenticate.admin(request);
 
-  // Läs Scrive-URL från shop-metafield (per butik)
-  const res = await admin.graphql(
-    `#graphql
-    query GetScriveUrl($namespace: String!, $key: String!) {
-      shop {
-        metafield(namespace: $namespace, key: $key) {
-          value
+  // Målet: sidan ska alltid rendera något, även om GraphQL failar.
+  let scriveUrl = "";
+  let loadError = null;
+
+  try {
+    const res = await admin.graphql(
+      `#graphql
+      query GetScriveUrl($namespace: String!, $key: String!) {
+        shop {
+          metafield(namespace: $namespace, key: $key) { value }
         }
-      }
-    }`,
-    {
-      variables: { namespace: MF_NAMESPACE, key: MF_KEY },
-    },
-  );
+      }`,
+      { variables: { namespace: MF_NAMESPACE, key: MF_KEY } }
+    );
 
-  const data = await res.json();
-  const scriveUrl = data?.data?.shop?.metafield?.value ?? "";
+    const data = await res.json();
 
-  return { scriveUrl };
+    // Shopify GraphQL kan returnera errors utan att throw:a.
+    if (data?.errors?.length) {
+      loadError = data.errors[0]?.message ?? "Okänt fel vid hämtning av Scrive-länk.";
+    } else {
+      scriveUrl = data?.data?.shop?.metafield?.value ?? "";
+    }
+  } catch (e) {
+    loadError =
+      e instanceof Error
+        ? e.message
+        : "Kunde inte hämta Scrive-länk just nu. Försök igen.";
+  }
+
+  return { scriveUrl, loadError };
 }
 
 export async function action({ request }) {
@@ -62,7 +80,7 @@ export async function action({ request }) {
   const formData = await request.formData();
   const scriveUrlRaw = String(formData.get("scriveUrl") ?? "").trim();
 
-  // Basic säkerhet/robusthet
+  // Basic robusthet
   if (scriveUrlRaw.length > 2048) {
     return { ok: false, error: "URL:en är för lång." };
   }
@@ -70,57 +88,66 @@ export async function action({ request }) {
     return { ok: false, error: "Skriv in en giltig https-länk till Scrive." };
   }
 
-  const shopId = await getShopId(admin);
-  if (!shopId) {
-    return { ok: false, error: "Kunde inte läsa shop-id. Försök igen." };
-  }
+  try {
+    const shopId = await getShopId(admin);
+    if (!shopId) {
+      return { ok: false, error: "Kunde inte läsa shop-id. Försök igen." };
+    }
 
-  // Sätt shop-metafield (per butik)
-  const mutationRes = await admin.graphql(
-    `#graphql
-    mutation SetScriveUrl($metafields: [MetafieldsSetInput!]!) {
-      metafieldsSet(metafields: $metafields) {
-        userErrors {
-          field
-          message
+    const mutationRes = await admin.graphql(
+      `#graphql
+      mutation SetScriveUrl($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          userErrors { field message }
         }
+      }`,
+      {
+        variables: {
+          metafields: [
+            {
+              ownerId: shopId,
+              namespace: MF_NAMESPACE,
+              key: MF_KEY,
+              type: "single_line_text_field",
+              value: scriveUrlRaw,
+            },
+          ],
+        },
       }
-    }`,
-    {
-      variables: {
-        metafields: [
-          {
-            ownerId: shopId,
-            namespace: MF_NAMESPACE,
-            key: MF_KEY,
-            type: "single_line_text_field",
-            value: scriveUrlRaw,
-          },
-        ],
-      },
-    },
-  );
+    );
 
-  const mutationJson = await mutationRes.json();
-  const userErrors = mutationJson?.data?.metafieldsSet?.userErrors ?? [];
+    const mutationJson = await mutationRes.json();
+    const userErrors = mutationJson?.data?.metafieldsSet?.userErrors ?? [];
 
-  if (userErrors.length > 0) {
+    if (mutationJson?.errors?.length) {
+      return {
+        ok: false,
+        error: mutationJson.errors[0]?.message ?? "Okänt fel vid sparning.",
+      };
+    }
+
+    if (userErrors.length > 0) {
+      return { ok: false, error: userErrors[0]?.message ?? "Okänt fel vid sparning." };
+    }
+
+    return { ok: true, scriveUrl: scriveUrlRaw };
+  } catch (e) {
     return {
       ok: false,
-      error: userErrors[0]?.message ?? "Okänt fel vid sparning.",
+      error:
+        e instanceof Error
+          ? e.message
+          : "Kunde inte spara just nu. Försök igen.",
     };
   }
-
-  return { ok: true, scriveUrl: scriveUrlRaw };
 }
 
 export default function AppIndexPage() {
-  const { scriveUrl: initialScriveUrl } = useLoaderData();
+  const { scriveUrl: initialScriveUrl, loadError } = useLoaderData();
   const fetcher = useFetcher();
 
   const [scriveUrl, setScriveUrl] = useState(initialScriveUrl);
 
-  // Om loadern uppdateras, synca in den i state
   useEffect(() => {
     setScriveUrl(initialScriveUrl);
   }, [initialScriveUrl]);
@@ -140,13 +167,21 @@ export default function AppIndexPage() {
 
   return (
     <s-page heading="Konsumentkollen från ViPo Säkerhetstjänster">
-      {/* ===================== Välkommen / Status ===================== */}
       <s-section>
         <s-card>
           <s-stack direction="block" gap="base">
             <s-heading level="2">Välkommen!</s-heading>
 
             <s-badge tone="success">Installerad och redo</s-badge>
+
+            {/* Om loadern fick problem vill vi ändå visa sidan */}
+            {loadError && (
+              <s-paragraph style={{ color: "crimson" }}>
+                ⚠️ Kunde inte läsa Scrive-länk just nu: {loadError}
+                <br />
+                Sidan fungerar fortfarande — du kan testa att spara igen.
+              </s-paragraph>
+            )}
 
             <s-paragraph>
               Konsumentkollen är installerad och redo att användas.
@@ -158,14 +193,12 @@ export default function AppIndexPage() {
         </s-card>
       </s-section>
 
-      {/* ===================== Scrive integration (VIKTIG) ===================== */}
       <s-section heading="Scrive-integration">
         <s-card>
           <s-stack direction="block" gap="base">
             <s-paragraph>
               Klistra in din Scrive-länk här. Denna länk öppnas när kunden klickar
-              på <strong>Starta bevakning</strong> i widgeten (både App Block och
-              Cart Drawer).
+              på <strong>Starta bevakning</strong> i widgeten.
             </s-paragraph>
 
             <s-text-field
@@ -178,18 +211,14 @@ export default function AppIndexPage() {
               }}
             ></s-text-field>
 
-            {/* Feedback */}
             {lastResult?.ok && (
-              <s-paragraph>
-                ✅ Sparat! Scrive-länken är nu uppdaterad för denna butik.
-              </s-paragraph>
+              <s-paragraph>✅ Sparat! Scrive-länken är nu uppdaterad för denna butik.</s-paragraph>
             )}
 
             {lastResult?.ok === false && (
-              <s-paragraph>❌ {lastResult.error}</s-paragraph>
+              <s-paragraph style={{ color: "crimson" }}>❌ {lastResult.error}</s-paragraph>
             )}
 
-            {/* Actions */}
             <s-stack direction="inline" gap="base">
               <s-button
                 variant="primary"
@@ -220,12 +249,9 @@ export default function AppIndexPage() {
         </s-card>
       </s-section>
 
-      {/* ===================== Lägg till widgeten ===================== */}
       <s-section heading="Lägg till Konsumentkollen-widgeten">
         <s-card>
-          <s-paragraph>
-            Du lägger in widgeten i ditt tema via Shopify Theme Editor:
-          </s-paragraph>
+          <s-paragraph>Du lägger in widgeten i ditt tema via Shopify Theme Editor:</s-paragraph>
 
           <s-paragraph>
             • Gå till <strong>Webbshop → Teman</strong> och klicka <strong>Anpassa</strong>.
@@ -242,25 +268,20 @@ export default function AppIndexPage() {
         </s-card>
       </s-section>
 
-      {/* ===================== Flöde ===================== */}
       <s-section heading="Så fungerar flödet (kund → Scrive → checkout)">
         <s-card>
           <s-paragraph>
-            1) Kunden lägger produkter i varukorgen och ser Konsumentkollen i
-            cart drawer / på sidan.
+            1) Kunden lägger produkter i varukorgen och ser Konsumentkollen.
             <br />
             2) Kunden klickar <strong>Starta bevakning</strong> → öppnar Scrive-länken.
             <br />
-            3) Efter signering kan Scrive skicka kunden vidare tillbaka till checkout
-            (kundens egna session) för att slutföra köpet.
+            3) Efter signering kan Scrive skicka kunden vidare tillbaka till checkout.
             <br />
-            4) Webhook från Scrive kan trigga Make, som aktiverar tjänsten automatiskt
-            och skickar bekräftelsemail.
+            4) Webhook från Scrive kan trigga Make, som aktiverar tjänsten automatiskt.
           </s-paragraph>
         </s-card>
       </s-section>
 
-      {/* ===================== Högerspalt ===================== */}
       <s-section slot="aside" heading="Om Konsumentkollen">
         <s-card>
           <s-paragraph>
@@ -276,12 +297,38 @@ export default function AppIndexPage() {
 
       <s-section slot="aside" heading="Support & tekniska frågor">
         <s-card>
-          <s-paragraph>
-            Behöver du hjälp med installationen eller har tekniska frågor?
-          </s-paragraph>
-
+          <s-paragraph>Behöver du hjälp med installationen eller har tekniska frågor?</s-paragraph>
           <s-paragraph>
             • E-post: <strong>william.bjorklund@vipo.se</strong>
+          </s-paragraph>
+        </s-card>
+      </s-section>
+    </s-page>
+  );
+}
+
+/**
+ * Extra viktigt: om något ändå kastar ett fel ska vi få en sida i Admin,
+ * inte en grå “trasig ikon”.
+ */
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  let message = "Okänt fel.";
+  if (isRouteErrorResponse(error)) {
+    message = `${error.status} ${error.statusText}`;
+  } else if (error instanceof Error) {
+    message = error.message;
+  }
+
+  return (
+    <s-page heading="ViPoAPP – Fel">
+      <s-section>
+        <s-card>
+          <s-paragraph style={{ color: "crimson" }}>
+            Något gick fel när appen skulle visas i Shopify Admin:
+            <br />
+            <strong>{message}</strong>
           </s-paragraph>
         </s-card>
       </s-section>
